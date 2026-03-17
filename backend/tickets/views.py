@@ -1,11 +1,8 @@
-from django.shortcuts import render
-
-# Create your views here.
-from rest_framework import generics,filters
+from rest_framework import generics, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Ticket
 from .serializers import TicketSerializer
-from django.db.models import Count
+from django.db.models import Count, Min, Max
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -34,22 +31,38 @@ class TicketStatsView(APIView):
     def get(self, request):
 
         total_tickets = Ticket.objects.count()
-
         open_tickets = Ticket.objects.filter(status="open").count()
+
+        date_range = Ticket.objects.aggregate(
+            earliest=Min("created_at"),
+            latest=Max("created_at")
+        )
+
+        earliest = date_range["earliest"]
+        latest = date_range["latest"]
+
+        if earliest and latest:
+            total_days = max((latest.date() - earliest.date()).days + 1, 1)
+            avg_tickets_per_day = round(total_tickets / total_days, 2)
+        else:
+            avg_tickets_per_day = 0
 
         priority_counts = (
             Ticket.objects.values("priority")
             .annotate(count=Count("id"))
+            .order_by("priority")
         )
 
         category_counts = (
             Ticket.objects.values("category")
             .annotate(count=Count("id"))
+            .order_by("category")
         )
 
         return Response({
             "total_tickets": total_tickets,
             "open_tickets": open_tickets,
+            "avg_tickets_per_day": avg_tickets_per_day,
             "priority_breakdown": priority_counts,
             "category_breakdown": category_counts
         })
