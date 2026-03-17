@@ -1,11 +1,8 @@
 # Support Ticket System
 
-A full-stack support ticket management system with automatic ticket classification using an LLM.
+A full-stack support ticket management system with LLM-assisted ticket classification.
 
-Users can submit support tickets, view and filter them, and see system statistics.  
-When a ticket description is written, an LLM automatically suggests the ticket category and priority.
-
----
+Users can create support tickets, filter and manage them from a dashboard, and view queue statistics. While writing a ticket description, the system can suggest a category and priority using an LLM.
 
 ## Features
 
@@ -17,24 +14,21 @@ When a ticket description is written, an LLM automatically suggests the ticket c
 - Search by title and description
 
 ### LLM Classification
-When the user writes a ticket description:
-- The system calls an LLM API
-- It predicts:
-  - Ticket category
-  - Ticket priority
-- The user can accept or override the suggestion.
+When a user writes a ticket description, the system:
+- Sends the description to an LLM API
+- Predicts the ticket category
+- Predicts the ticket priority
+- Lets the user accept or override the suggestion
 
 ### Statistics Dashboard
-The stats endpoint provides:
+The dashboard includes:
 - Total tickets
 - Open tickets
 - Average tickets per day
 - Priority breakdown
 - Category breakdown
 
-Statistics are calculated using **database aggregation**.
-
----
+Statistics are calculated using database aggregation.
 
 ## Tech Stack
 
@@ -47,188 +41,215 @@ Statistics are calculated using **database aggregation**.
 - HTML5
 - CSS3
 - Vanilla JavaScript
+- Nginx
 
 ### LLM Integration
 - Groq API
 - Model: `llama-3.3-70b-versatile`
 
-Groq was chosen because it provides a free API tier and supports OpenAI-style chat completions.
+Groq was chosen because it provides a free tier and supports an OpenAI-style chat completions interface.
 
 ### Infrastructure
 - Docker
 - Docker Compose
 
----
-
 ## Project Structure
-support-ticket-system
-│
-├── backend
-│ ├── config
-│ ├── tickets
-│ ├── manage.py
-│ └── requirements.txt
-│
-├── frontend
-│ ├── index.html
-│ ├── style.css
-│ └── app.js
-│
-├── docker-compose.yml
+
+```text
+support-ticket-system/
+├── backend/
+│   ├── config/
+│   ├── tickets/
+│   ├── manage.py
+│   └── requirements.txt
+├── frontend/
+│   ├── index.html
+│   ├── style.css
+│   ├── app.js
+│   └── nginx.conf
 ├── backend.Dockerfile
 ├── frontend.Dockerfile
+├── docker-compose.yml
 └── README.md
-
----
+```
 
 ## Setup Instructions
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
-git clone <project-folder>
+git clone <repository-url>
 cd support-ticket-system
 ```
-2. Add LLM API key
 
-Create:backend/.env
+### 2. Add the Environment File
 
-Example:GROQ_API_KEY=your_api_key_here
-3. Run the application
-docker-compose up --build
+Create `backend/.env`:
 
-Docker will start:
+```env
+GROQ_API_KEY=your_api_key_here
+```
 
-PostgreSQL database
+### 3. Run the Application
 
-Django backend
+```bash
+docker compose up --build
+```
 
-Frontend (served via Nginx)
+This starts:
+- PostgreSQL
+- Django backend
+- Frontend served by Nginx
 
-Access the application
+## Access the Application
 
-Frontend UI:
+- Frontend UI: [http://localhost:3000](http://localhost:3000)
+- Backend API: [http://localhost:8000/api/tickets/](http://localhost:8000/api/tickets/)
+- Stats endpoint: [http://localhost:8000/api/tickets/stats/](http://localhost:8000/api/tickets/stats/)
 
-http://localhost:3000
+## API Endpoints
 
-Backend API:
+### Create Ticket
 
-http://localhost:8000/api/tickets/
+`POST /api/tickets/`
 
-Stats endpoint:
+Example request:
 
-http://localhost:8000/api/tickets/stats/
-API Endpoints
-Create Ticket
-POST /api/tickets/
-
-Example:
-
+```json
 {
- "title": "Login issue",
- "description": "I cannot login to my account",
- "category": "account",
- "priority": "high"
+  "title": "Login issue",
+  "description": "I cannot login to my account",
+  "category": "account",
+  "priority": "high"
 }
-List Tickets
-GET /api/tickets/
+```
 
-Filters:
+### List Tickets
 
+`GET /api/tickets/`
+
+Supported filters:
+
+```text
 /api/tickets/?category=billing
 /api/tickets/?priority=high
 /api/tickets/?status=open
 /api/tickets/?search=login
-Update Ticket
-PATCH /api/tickets/<id>/
+```
 
-Example:
+### Update Ticket
 
-{
- "status": "resolved"
-}
-Ticket Classification
-POST /api/tickets/classify/
+`PATCH /api/tickets/<id>/`
 
 Example request:
 
+```json
 {
- "description": "My card was charged twice"
+  "status": "resolved"
 }
+```
+
+### Classify Ticket
+
+`POST /api/tickets/classify/`
+
+Example request:
+
+```json
+{
+  "description": "My card was charged twice"
+}
+```
 
 Example response:
 
+```json
 {
- "suggested_category": "billing",
- "suggested_priority": "high"
+  "suggested_category": "billing",
+  "suggested_priority": "high"
 }
-Ticket Statistics
-GET /api/tickets/stats/
+```
+
+### Ticket Statistics
+
+`GET /api/tickets/stats/`
 
 Example response:
 
+```json
 {
- "total_tickets": 10,
- "open_tickets": 5,
- "avg_tickets_per_day": 2.3,
- "priority_breakdown": {
-   "low": 2,
-   "medium": 3,
-   "high": 4,
-   "critical": 1
- },
- "category_breakdown": {
-   "billing": 3,
-   "technical": 4,
-   "account": 2,
-   "general": 1
- }
+  "total_tickets": 10,
+  "open_tickets": 5,
+  "avg_tickets_per_day": 2.3,
+  "priority_breakdown": [
+    {
+      "priority": "critical",
+      "count": 1
+    },
+    {
+      "priority": "high",
+      "count": 4
+    }
+  ],
+  "category_breakdown": [
+    {
+      "category": "billing",
+      "count": 3
+    },
+    {
+      "category": "technical",
+      "count": 4
+    }
+  ]
 }
-Design Decisions
-Django REST Framework
+```
+
+## Design Decisions
+
+### Django REST Framework
 
 Chosen for rapid API development and built-in serialization.
 
-Database Aggregation
+### Database Aggregation
 
-Statistics use Django ORM aggregation (annotate, Count) instead of Python loops for better performance.
+Statistics use Django ORM aggregation such as `annotate()` and `Count()` instead of Python-side loops for better performance.
 
-LLM Provider
+### LLM Provider
 
-Groq was selected because:
+Groq was selected because it offers:
+- A free tier
+- Fast inference
+- Compatibility with OpenAI-style chat completions
 
-Free tier available
+### Frontend Approach
 
-Fast inference
+Vanilla JavaScript keeps the frontend lightweight while still supporting dynamic updates and filtering.
 
-Compatible chat completion API
+## Running Without Docker
 
-Frontend Approach
+### Backend
 
-Vanilla JavaScript was used instead of React to keep the implementation lightweight while still supporting dynamic updates.
-
-Running Without Docker
-
-Backend:
-
+```bash
 cd backend
 python manage.py runserver
+```
 
-Frontend:
+### Frontend
 
 Open:
 
+```text
 frontend/index.html
-Author
+```
+
+## Author
 
 Satyam Behera
 
+## Submission Tip
 
----
+Zip the entire folder, including `.git`:
 
-💡 **Tip before submitting:**  
-
-Zip the **entire folder including `.git`**:
-
-
+```text
 support-ticket-system.zip
+```
